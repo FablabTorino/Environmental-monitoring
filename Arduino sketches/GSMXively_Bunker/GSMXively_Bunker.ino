@@ -52,7 +52,7 @@ char server[] = "api.xively.com";       // name address for Pachube API
 
 unsigned long lastConnectionTime = 0;           // last time you connected to the server, in milliseconds
 boolean lastConnected = false;                  // state of the connection last time through the main loop
-const unsigned long postingInterval = 10*1000;  // delay between updates to Pachube.com
+const unsigned long postingInterval = 300000L;  // delay between updates to Pachube.com
 
 void setup()
 {
@@ -61,16 +61,16 @@ void setup()
   while (!Serial) {
     ; // wait for serial port to connect. Needed for Leonardo only
   }
-  
+
   // connection state
   boolean notConnected = true;
-  
+
   // After starting the modem with GSM.begin()
   // attach the shield to the GPRS network with the APN, login and password 
   while(notConnected)
   {
     if((gsmAccess.begin(PINNUMBER)==GSM_READY) &
-        (gprs.attachGPRS(GPRS_APN, GPRS_LOGIN, GPRS_PASSWORD)==GPRS_READY))
+      (gprs.attachGPRS(GPRS_APN, GPRS_LOGIN, GPRS_PASSWORD)==GPRS_READY))
       notConnected = false;
     else
     {
@@ -85,18 +85,18 @@ void setup()
 void loop()
 {
   // read the sensor on A0
-  int sensorReading = analogRead(A0); 
-  
+  int sensorReading = pow(10.0, 5.0*analogRead(A0)/1024.0 ); 
+
   // convert the data to a String
-  String dataString = "humidty,";
+  String dataString = "LightLog,";
   dataString += sensorReading;
 
-   //you can append multiple readings to this String to 
+  //you can append multiple readings to this String to 
   // send the pachube feed multiple values
-  int otherSensorReading = analogRead(A1);
-  dataString += "\ntemperature,";
+  int otherSensorReading = analogRead(A1)/6;
+  dataString += "\nSoilHumidity,";
   dataString += otherSensorReading;
-//  dataString +="\n\n";
+  //  dataString +="\n\n";
   // if there's incoming data from the net connection.
   // send it out the serial port.  This is for debugging
   // purposes only
@@ -136,9 +136,9 @@ void sendData(String thisData)
     int len = thisData.length()+2;
     Serial.print("len: ");
     Serial.println(len);
-    
+
     Serial.println("connecting...");
-    
+
     // send the HTTP PUT request:
     client.print("PUT /v2/feeds/");
     client.print(FEEDID);
@@ -155,7 +155,7 @@ void sendData(String thisData)
     client.print("Content-Type: text/csv\n");
     client.println("Connection: close\n");
     client.println();
-    
+
     // here's the actual content of the PUT request
     client.println(thisData);
   } 
@@ -170,3 +170,4 @@ void sendData(String thisData)
   // note the time that the connection was made or attempted:
   lastConnectionTime = millis();
 }
+
