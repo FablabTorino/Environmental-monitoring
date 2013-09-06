@@ -61,6 +61,26 @@ void setup()
   while (!Serial) {
     ; // wait for serial port to connect. Needed for Leonardo only
   }
+  
+  //variabili per il calcolo del VWC per approssimare la curva con una successione di spezzate __.
+  float M1 = 8.18;  //coeff.angolare 0<->1.1V
+  float M2 = 25;  //coeff.angolare 1.1<->1.3V
+  float M3 = 48;  //coeff.angolare 1.3<->1.8V
+  float M4 = 25;  //coeff.angolare 1.8<->2.2V
+  float B1 = -1;  //intercetta 0<->1.1V
+  float B2 = 17.5;  //intercetta 1.1<->1.3V
+  float B3 = 47.4;  //intercetta 1.3<->1.8V
+  float B4 = 5;  //intercetta 1.8<->2.2V
+  float XXX; //to store the analograed
+  
+  /**************************************************** 
+  XXX =  analogRead(A1)*5/1024; // da riferirsi ad un AREF di 5V
+  if ( XXX >= 0 && XXX < 1.1) VWC = M1*XXX + B1;
+  if ( XXX >= 1.1 && XXX < 1.3) VWC = M2*XXX + B2;
+  if ( XXX >= 1.3 && XXX < 1.82) VWC = M3*XXX + B3;
+  if ( XXX >= 1.82 && XXX < 2.2) VWC = M4*XXX + B4;
+  ok??????????????????????????????????????????????
+  **************************************************/
 
   // connection state
   boolean notConnected = true;
