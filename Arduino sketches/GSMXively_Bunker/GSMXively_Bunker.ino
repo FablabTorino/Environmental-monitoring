@@ -54,6 +54,18 @@ unsigned long lastConnectionTime = 0;           // last time you connected to th
 boolean lastConnected = false;                  // state of the connection last time through the main loop
 const unsigned long postingInterval = 300000L;  // delay between updates to Pachube.com
 
+
+  //variabili per il calcolo del VWC per approssimare la curva con una successione di spezzate __.
+  float M1 = 8.18;  //coeff.angolare 0<->1.1V
+  float M2 = 25.0;  //coeff.angolare 1.1<->1.3V
+  float M3 = 48.0;  //coeff.angolare 1.3<->1.8V
+  float M4 = 25.0;  //coeff.angolare 1.8<->2.2V
+  float i1 = -1.0;  //intercetta 0<->1.1V
+  float i2 = 17.5;  //intercetta 1.1<->1.3V
+  float i3 = 47.4;  //intercetta 1.3<->1.8V
+  float i4 = 5.0;  //intercetta 1.8<->2.2V
+  float otherSensorReading; //to store the analograed
+
 void setup()
 {
   // initialize serial communications and wait for port to open:
@@ -61,26 +73,6 @@ void setup()
   while (!Serial) {
     ; // wait for serial port to connect. Needed for Leonardo only
   }
-  
-  //variabili per il calcolo del VWC per approssimare la curva con una successione di spezzate __.
-  float M1 = 8.18;  //coeff.angolare 0<->1.1V
-  float M2 = 25;  //coeff.angolare 1.1<->1.3V
-  float M3 = 48;  //coeff.angolare 1.3<->1.8V
-  float M4 = 25;  //coeff.angolare 1.8<->2.2V
-  float B1 = -1;  //intercetta 0<->1.1V
-  float B2 = 17.5;  //intercetta 1.1<->1.3V
-  float B3 = 47.4;  //intercetta 1.3<->1.8V
-  float B4 = 5;  //intercetta 1.8<->2.2V
-  float XXX; //to store the analograed
-  
-  /**************************************************** 
-  XXX =  analogRead(A1)*5/1024; // da riferirsi ad un AREF di 5V
-  if ( XXX >= 0 && XXX < 1.1) VWC = M1*XXX + B1;
-  if ( XXX >= 1.1 && XXX < 1.3) VWC = M2*XXX + B2;
-  if ( XXX >= 1.3 && XXX < 1.82) VWC = M3*XXX + B3;
-  if ( XXX >= 1.82 && XXX < 2.2) VWC = M4*XXX + B4;
-  ok??????????????????????????????????????????????
-  **************************************************/
 
   // connection state
   boolean notConnected = true;
@@ -105,6 +97,7 @@ void setup()
 void loop()
 {
   // read the sensor on A0
+  // sensore di luminosità 
   int sensorReading = pow(10.0, 5.0*analogRead(A0)/1024.0 ); 
 
   // convert the data to a String
@@ -113,9 +106,20 @@ void loop()
 
   //you can append multiple readings to this String to 
   // send the pachube feed multiple values
-  int otherSensorReading = analogRead(A1)/6;
+  //int otherSensorReading = analogRead(A1)/6;
+
+  /************************* __.
+   * algoritmo per implementare la funzione proposta da vegetronix: http://vegetronix.com/Products/VH400/VH400-Piecewise-Curve.phtml
+   **************************/
+  float VWC;
+  float otherSensorReading =  analogRead(A1)*5/1024; // da riferirsi ad un AREF di 5V
+  if ( otherSensorReading >= 0 && otherSensorReading < 1.1) VWC = M1*otherSensorReading + i1;
+  if ( otherSensorReading >= 1.1 && otherSensorReading < 1.3) VWC = M2*otherSensorReading + i2;
+  if ( otherSensorReading >= 1.3 && otherSensorReading < 1.82) VWC = M3*otherSensorReading + i3;
+  if ( otherSensorReading >= 1.82 && otherSensorReading < 2.2) VWC = M4*otherSensorReading + i4;
+
   dataString += "\nSoilHumidity,";
-  dataString += otherSensorReading;
+  dataString += char(VWC);
   //  dataString +="\n\n";
   // if there's incoming data from the net connection.
   // send it out the serial port.  This is for debugging
@@ -190,4 +194,5 @@ void sendData(String thisData)
   // note the time that the connection was made or attempted:
   lastConnectionTime = millis();
 }
+
 
