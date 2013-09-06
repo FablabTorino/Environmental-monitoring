@@ -36,7 +36,7 @@
 #define PINNUMBER ""
 
 // APN data
-#define GPRS_APN       "mobile.vodafone.it" // replace your GPRS APN
+#define GPRS_APN       "bluevia.movistar.es" // replace your GPRS APN
 #define GPRS_LOGIN     ""    // replace with your GPRS login
 #define GPRS_PASSWORD  "" // replace with your GPRS password
 
@@ -55,20 +55,16 @@ boolean lastConnected = false;                  // state of the connection last 
 const unsigned long postingInterval = 300000L;  // delay between updates to Pachube.com
 
 //variabili per il calcolo del VWC per approssimare la curva con una successione di spezzate __.
-  float VWC;        //contenuto volumetrico di acqua
-  int counter = 0;  //counter solo per controllo connessione
-  int i = 0;        //per fare al media
-  int n = 5;        // numero di elementi su cui medio
-  int sumLight = 0;
-  float sumSoil = 0;
-  float M1 = 8.18;  //coeff.angolare 0<->1.1V
+  float VWC;
+  int counter = 0;
+  float M1 = 10;  //coeff.angolare 0<->1.1V
   float M2 = 25.0;  //coeff.angolare 1.1<->1.3V
-  float M3 = 48.0;  //coeff.angolare 1.3<->1.8V
-  float M4 = 25.0;  //coeff.angolare 1.8<->2.2V
-  float cB1 = -1.0;  //intercetta 0<->1.1V
+  float M3 = 48.08;  //coeff.angolare 1.3<->1.8V
+  float M4 = 26.32;  //coeff.angolare 1.8<->2.2V
+  float cB1 = 1.0;  //intercetta 0<->1.1V
   float B2 = 17.5;  //intercetta 1.1<->1.3V
-  float B3 = 47.4;  //intercetta 1.3<->1.8V
-  float B4 = 5.0;  //intercetta 1.8<->2.2V
+  float B3 = 47.5;  //intercetta 1.3<->1.8V
+  float B4 = 7.89;  //intercetta 1.8<->2.2V
   //float otherSensorReading; //to store the analograed     (22-lug l'ho dichiarato nel loop)
 
 void setup()
@@ -103,15 +99,7 @@ void loop()
 {
   // read the sensor on A0
   int sensorReading = pow(10.0, 5.0*analogRead(A0)/1024.0 ); 
-  if (i == 0) sensorReading = 0;  //elimino la prima lettura
-  if (i < n+1) {
-    sumLight += sensorReading;
-  }
-  else {
-    sensorReading = sumLight/n;
-    sumLight = 0;
-  }
-  
+ 
   // convert the data to a String
   String dataString = "LightLog,";
   dataString += sensorReading;
@@ -125,30 +113,14 @@ void loop()
   algoritmo per implementare la funzione proposta da vegetronix: http://vegetronix.com/Products/VH400/VH400-Piecewise-Curve.phtml
   **************************/
   otherSensorReading =  analogRead(A1)*5.0/1024.0; // da riferirsi ad un AREF di 5V
-
-  if (i == 0) otherSensorReading = 0; //elimino la prima lettura
-  if (i < n+1) {
-    sumSoil += otherSensorReading;
-  }
-  else {
-    otherSensorReading = sumSoil/n;
-    if ( otherSensorReading >= 0.0 && otherSensorReading < 1.1) VWC = M1*otherSensorReading + B1;
-    if ( otherSensorReading >= 1.1 && otherSensorReading < 1.3) VWC = M2*otherSensorReading + B2;
-    if ( otherSensorReading >= 1.3 && otherSensorReading < 1.82) VWC = M3*otherSensorReading + B3;
-    if ( otherSensorReading >= 1.82 && otherSensorReading < 2.2) VWC = M4*otherSensorReading + B4;
-    sumSoil = 0;
-    i = 0;  
-  }
-  i ++;
+  if ( otherSensorReading >= 0.0 && otherSensorReading < 1.1) VWC = M1*otherSensorReading - B1;
+  if ( otherSensorReading >= 1.1 && otherSensorReading < 1.3) VWC = M2*otherSensorReading - B2;
+  if ( otherSensorReading >= 1.3 && otherSensorReading < 1.82) VWC = M3*otherSensorReading - B3;
+  if ( otherSensorReading >= 1.82 && otherSensorReading < 2.2) VWC = M4*otherSensorReading - B4;
+  
   dataString += "\nSoilHumidity,";
   dataString += int(VWC);
-  
-  //controllo che il counter non superi 100 per aver un Dentedisega e controllare in modo significativo la connessione
-  if (counter >= 100) counter = 0;
-  
-  dataString += "\nCounter,";
-  dataString += counter++;
-  
+    
   // dataString +="\n\n";
   // if there's incoming data from the net connection.
   // send it out the serial port.  This is for debugging
@@ -172,6 +144,13 @@ void loop()
   // your last connection, then connect again and send data
   if(!client.connected() && (millis() - lastConnectionTime > postingInterval))
   {
+    //controllo che il counter non superi 100 per aver un Dentedisega e controllare in modo significativo la connessione
+    if (counter >= 100) counter = 0;
+  
+    dataString += "\nCounter,";
+    dataString += counter++;
+    
+    Serial.println(dataString);
     sendData(dataString);
   }
   // store the state of the connection for next time through
@@ -223,6 +202,4 @@ void sendData(String thisData)
   // note the time that the connection was made or attempted:
   lastConnectionTime = millis();
 }
-
-
 
