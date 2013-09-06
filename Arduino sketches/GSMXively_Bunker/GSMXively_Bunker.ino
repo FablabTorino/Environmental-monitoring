@@ -28,8 +28,8 @@
 #include <GSM.h>
 
 // Pachube login information
-#define APIKEY         "k6xUkCu1PbfV0eSa9QwC47vh4CjfGdJSPPQESHDsM3PdVbn4"  // replace your pachube api key here
-#define FEEDID         2092230271                     // replace your feed ID
+#define APIKEY         "k6xUkCu1PbfV0eSa9QwC47vh4CjfGdJSPPQESHDsM3PdVbn4"  // replace your pachube api key here - N.1 api key (Fablab): "k6xUkCu1PbfV0eSa9QwC47vh4CjfGdJSPPQESHDsM3PdVbn4" - N.3 api key (Franco): "FsMp8NSyUVMvb0mDS2UMTz4KKamA04MoxiqDso9Xmop99ow7" 
+#define FEEDID         2092230271  // replace your feed ID - N.1 feed ID (Fablab): 2092230271 - N.3 feed ID (Franco): 2135675393
 #define USERAGENT      "GSM"//"Xively-Arduino-Lib/1.0"              // user agent is the project name
 
 // PIN Number
@@ -69,6 +69,7 @@ const unsigned long postingInterval = 300000L;  // delay between updates to Pach
 
 void setup()
 {
+  analogReference(EXTERNAL); // ATTENZIONE *** ATTENZIONE *** ATTENZIONE *** Scollegare il pin AREF da +3,3V prima di caricare altri sketch che non contengano questa riga. 
   // initialize serial communications and wait for port to open:
   Serial.begin(9600);
   while (!Serial) {
@@ -98,7 +99,7 @@ void setup()
 void loop()
 {
   // read the sensor on A0
-  int sensorReading = pow(10.0, 5.0*analogRead(A0)/1024.0 ); 
+  int sensorReading = pow(10.0, 3.3*analogRead(A0)/1024.0 ); // da riferirsi ad un AREF di 3.3V
  
   // convert the data to a String
   String dataString = "LightLog,";
@@ -112,7 +113,7 @@ void loop()
   /************************* 
   algoritmo per implementare la funzione proposta da vegetronix: http://vegetronix.com/Products/VH400/VH400-Piecewise-Curve.phtml
   **************************/
-  otherSensorReading =  analogRead(A1)*5.0/1024.0; // da riferirsi ad un AREF di 5V
+  otherSensorReading =  analogRead(A1)*3.3/1024.0; // da riferirsi ad un AREF di 3.3V
   if ( otherSensorReading >= 0.0 && otherSensorReading < 1.1) VWC = M1*otherSensorReading - B1;
   if ( otherSensorReading >= 1.1 && otherSensorReading < 1.3) VWC = M2*otherSensorReading - B2;
   if ( otherSensorReading >= 1.3 && otherSensorReading < 1.82) VWC = M3*otherSensorReading - B3;
@@ -120,6 +121,16 @@ void loop()
   
   dataString += "\nSoilHumidity,";
   dataString += int(VWC);
+    
+  /************************* 
+  Voltaggio batteria LiPo
+  **************************/
+    float batteryvoltage; // misuro il voltaggio in mV della batteria tramite 10K-A2-10K (dissipando costantemente 0,185mA@3,7V per eseguire questa misura!)
+  batteryvoltage =  analogRead(A2)*3300.0/512.0; // un partitore resistivo in ingresso permette di misurare fino a 6,6V, divido per 512 invece di moltiplicare per 2
+  
+  dataString += "\nVoltaggioBatteria,";
+  dataString += int(batteryvoltage);
+   
     
   // dataString +="\n\n";
   // if there's incoming data from the net connection.
