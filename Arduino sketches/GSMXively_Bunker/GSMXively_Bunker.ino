@@ -94,6 +94,7 @@ void loop()
   {
     char c = client.read();
     Serial.print(c);
+    Serial.println("client available");
   }
 
   int controller = 0;
@@ -120,6 +121,8 @@ void loop()
     dataString += "\nCounter,";
     dataString += counter++;
     
+    Serial.println("sono nel if pronto per trasmettere");
+    Serial.println("stampo la stringa che spediro'");
     Serial.println(dataString);
     sendData(dataString);
 
@@ -128,6 +131,7 @@ void loop()
   }
   // store the state of the connection for next time through
   // the loop
+  Serial.print("come e' il client :  ");
   lastConnected = client.connected();
   Serial.println(lastConnected);
   delay (1000);
@@ -135,6 +139,7 @@ void loop()
   delay(1000);
   sleep();
   Serial.println("connection closed");
+  Serial.println("_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _");
   delay (1000);
 }
 
@@ -144,7 +149,9 @@ void sendData(String thisData)
   // if there's a successful connection:
   if (client.connect(server, 80))
   {
+    Serial.println("sono nel sendData");
     Serial.println(thisData);
+    Serial.println(client.connected());
     int len = thisData.length()+2;
     Serial.print("len: ");
     Serial.println(len);
