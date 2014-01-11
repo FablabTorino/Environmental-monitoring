@@ -9,16 +9,16 @@
 //
 
 // Replace your pachube API key here
-#define APIKEY "ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789"
+#define XIVELY_API_KEY "ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789"
 
 // Replace your feed ID
-#define FEEDID 1111111111
+#define XIVELY_FEED_ID 1111111111
 
 // User agent is the project name
-#define USERAGENT "GSM"
+#define XIVELY_USER_AGENT "GSM"
 
 // Name address for Xively API
-char server[] = "api.xively.com";
+char xivelyServerNameAddress[] = "api.xively.com";
 
 // Numeric IP for api.xively.com
 //   (If you don't want to use DNS (and reduce your sketch size)
@@ -31,7 +31,7 @@ char server[] = "api.xively.com";
 //
 
 // PIN number
-#define PINNUMBER ""
+#define SIM_PIN_NUMBER ""
 
 // Replace your GPRS APN
 #define GPRS_APN "bluevia.movistar.es"
@@ -47,7 +47,7 @@ char server[] = "api.xively.com";
 // GSM shield library instance
 //
 
-GSMClient client;
+GSMClient gsmClient;
 GPRS gprsAccess;
 GSM gsmAccess;
 
@@ -57,7 +57,6 @@ GSM gsmAccess;
 //
 
 float VWC;
-int counter = 0;
 
 // Coefficiente angolare 0<->1.1V
 float M1 = 10;
@@ -95,6 +94,8 @@ const unsigned long postingInterval = 3000L;
 
 boolean notConnected = true;
 
+int counter = 0;
+
 
 //
 // setup()
@@ -126,16 +127,16 @@ void loop()
 
   openConnection();
 
-  if (client.available())
+  if (gsmClient.available())
   {
-    char c = client.read();
+    char c = gsmClient.read();
     Serial.print(c);
     Serial.println("client available");
   }
 
   int controller = 0;
-  Serial.println(client.connected());
-  controller = client.connected();
+  Serial.println(gsmClient.connected());
+  controller = gsmClient.connected();
   Serial.println(controller);
   Serial.println(lastConnected);
 
@@ -150,10 +151,12 @@ void loop()
 
   // If you're not connected, and ten seconds have passed since
   // your last connection, then connect again and send data
-  if(!client.connected() && (millis() - lastConnectionTime > postingInterval))
+  if(!gsmClient.connected() && (millis() - lastConnectionTime > postingInterval))
   {
     // Controllo che il counter non superi 100 per aver un dente di sega e controllare in modo significativo la connessione
-    if (counter >= 100) counter = 0;
+    if (counter >= 100)
+      counter = 0;
+
     dataString += "\nCounter,";
     dataString += counter++;
 
@@ -168,7 +171,7 @@ void loop()
 
   // Store the state of the connection for next time through the loop
   Serial.print("come e' il client :  ");
-  lastConnected = client.connected();
+  lastConnected = gsmClient.connected();
   Serial.println(lastConnected);
   delay (1000);
   closeConnection();
@@ -189,44 +192,44 @@ void loop()
 void sendData(String thisData)
 {
   // If there's a successful connection
-  if (client.connect(server, 80))
+  if (gsmClient.connect(xivelyServerNameAddress, 80))
   {
     Serial.println("sono nel sendData");
     Serial.println(thisData);
-    Serial.println(client.connected());
+    Serial.println(gsmClient.connected());
     int len = thisData.length()+2;
     Serial.print("len: ");
     Serial.println(len);
 
     Serial.println("connecting...");
 
-    // send the HTTP PUT request:
-    client.print("PUT /v2/feeds/");
-    client.print(FEEDID);
-    client.println(".csv HTTP/1.1");
-    client.print("Host: api.xively.com\n");
-    client.print("X-ApiKey: ");
-    client.println(APIKEY);
-    client.print("User-Agent: ");
-    client.println(USERAGENT);
-    client.print("Content-Length: ");
-    client.println(len);
+    // Send the HTTP PUT request:
+    gsmClient.print("PUT /v2/feeds/");
+    gsmClient.print(XIVELY_FEED_ID);
+    gsmClient.println(".csv HTTP/1.1");
+    gsmClient.print("Host: api.xively.com\n");
+    gsmClient.print("X-ApiKey: ");
+    gsmClient.println(XIVELY_API_KEY);
+    gsmClient.print("User-Agent: ");
+    gsmClient.println(XIVELY_USER_AGENT);
+    gsmClient.print("Content-Length: ");
+    gsmClient.println(len);
 
-    // last pieces of the HTTP PUT request
-    client.print("Content-Type: text/csv\n");
-    client.println("Connection: close\n");
-    client.println();
+    // Last pieces of the HTTP PUT request
+    gsmClient.print("Content-Type: text/csv\n");
+    gsmClient.println("Connection: close\n");
+    gsmClient.println();
 
-    // here's the actual content of the PUT request
-    client.println(thisData);
+    // Here's the actual content of the PUT request
+    gsmClient.println(thisData);
   } 
   else
   {
-    // if you couldn't make a connection
+    // If you couldn't make a connection
     Serial.println("connection failed");
     Serial.println();
     Serial.println("disconnecting.");
-    client.stop();
+    gsmClient.stop();
   }
 }
 
@@ -321,9 +324,9 @@ void sleep()
 
 void closeConnection()
 {
-  if(client.connected())
+  if(gsmClient.connected())
   {
-    client.stop();
+    gsmClient.stop();
     Serial.println("disconnecting in closeConnection()");
   }
 
@@ -363,7 +366,7 @@ void openConnection()
   {
     Serial.println("Starting GSM connection...");
  
-    gsmAccess.begin(PINNUMBER);
+    gsmAccess.begin(SIM_PIN_NUMBER);
  
     while(gsmAccess.getStatus() != GSM_READY);
  
