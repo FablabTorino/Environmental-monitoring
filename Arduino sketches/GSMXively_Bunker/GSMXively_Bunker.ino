@@ -26,6 +26,7 @@
 
 // Include the GSM library
 #include <GSM.h>
+#include "LowPower.h"
 
 // Pachube login information
 #define APIKEY         "k6xUkCu1PbfV0eSa9QwC47vh4CjfGdJSPPQESHDsM3PdVbn4"  // replace your pachube api key here - N.1 api key (Fablab): "k6xUkCu1PbfV0eSa9QwC47vh4CjfGdJSPPQESHDsM3PdVbn4" - N.3 api key (Franco): "FsMp8NSyUVMvb0mDS2UMTz4KKamA04MoxiqDso9Xmop99ow7" 
@@ -42,7 +43,7 @@
 
 // initialize the library instance
 GSMClient client;
-GPRS gprs;
+GPRS gprsAccess;
 GSM gsmAccess;
 
 // if you don't want to use DNS (and reduce your sketch size)
@@ -52,7 +53,7 @@ char server[] = "api.xively.com";       // name address for Pachube API
 
 unsigned long lastConnectionTime = 0;           // last time you connected to the server, in milliseconds
 boolean lastConnected = false;                  // state of the connection last time through the main loop
-const unsigned long postingInterval = 300000L;  // delay between updates to Pachube.com
+const unsigned long postingInterval = 3000L;  // delay between updates to Pachube.com
 
 //variabili per il calcolo del VWC per approssimare la curva con una successione di spezzate __.
   float VWC;
@@ -66,6 +67,7 @@ const unsigned long postingInterval = 300000L;  // delay between updates to Pach
   float B3 = 47.5;  //intercetta 1.3<->1.8V
   float B4 = 7.89;  //intercetta 1.8<->2.2V
   //float otherSensorReading; //to store the analograed     (22-lug l'ho dichiarato nel loop)
+boolean notConnected = true;
 
 void setup()
 {
@@ -76,80 +78,38 @@ void setup()
     ; // wait for serial port to connect. Needed for Leonardo only
   }
 
-  // connection state
-  boolean notConnected = true;
-
-  // After starting the modem with GSM.begin()
-  // attach the shield to the GPRS network with the APN, login and password 
-  while(notConnected)
-  {
-    if((gsmAccess.begin(PINNUMBER)==GSM_READY) &
-      (gprs.attachGPRS(GPRS_APN, GPRS_LOGIN, GPRS_PASSWORD)==GPRS_READY))
-      notConnected = false;
-    else
-    {
-      Serial.println("Not connected");
-      delay(1000);
-    }
-  }
-
-  Serial.println("Connected to GPRS network");
 }
 
 void loop()
 {
-  // read the sensor on A0
-  int sensorReading = pow(10.0, 3.3*analogRead(A0)/1024.0 ); // da riferirsi ad un AREF di 3.3V
- 
-  // convert the data to a String
-  String dataString = "LightLog,";
-  dataString += sensorReading;
+  //delay(3000);
 
-  //you can append multiple readings to this String to 
-  // send the pachube feed multiple values
-  //int otherSensorReading = analogRead(A1)/6;
-  float otherSensorReading;
-  
-  /************************* 
-  algoritmo per implementare la funzione proposta da vegetronix: http://vegetronix.com/Products/VH400/VH400-Piecewise-Curve.phtml
-  **************************/
-  otherSensorReading =  analogRead(A1)*3.3/1024.0; // da riferirsi ad un AREF di 3.3V
-  if ( otherSensorReading >= 0.0 && otherSensorReading < 1.1) VWC = M1*otherSensorReading - B1;
-  if ( otherSensorReading >= 1.1 && otherSensorReading < 1.3) VWC = M2*otherSensorReading - B2;
-  if ( otherSensorReading >= 1.3 && otherSensorReading < 1.82) VWC = M3*otherSensorReading - B3;
-  if ( otherSensorReading >= 1.82 && otherSensorReading < 2.2) VWC = M4*otherSensorReading - B4;
-  
-  dataString += "\nSoilHumidity,";
-  dataString += int(VWC);
-    
-  /************************* 
-  Voltaggio batteria LiPo
-  **************************/
-    float batteryvoltage; // misuro il voltaggio in mV della batteria tramite 10K-A2-10K (dissipando costantemente 0,185mA@3,7V per eseguire questa misura!)
-  batteryvoltage =  analogRead(A2)*3300.0/512.0; // un partitore resistivo in ingresso permette di misurare fino a 6,6V, divido per 512 invece di moltiplicare per 2
-  
-  dataString += "\nVoltaggioBatteria,";
-  dataString += int(batteryvoltage);
-   
-    
-  // dataString +="\n\n";
-  // if there's incoming data from the net connection.
-  // send it out the serial port.  This is for debugging
-  // purposes only
+  String dataString = readSensors();
+
+  digitalWrite(3, HIGH);
+
+  openConnection();
+
   if (client.available())
   {
     char c = client.read();
     Serial.print(c);
   }
 
+  int controller = 0;
+  Serial.println(client.connected());
+  controller = client.connected();
+  Serial.println(controller);
+  Serial.println(lastConnected);
+
   // if there's no net connection, but there was one last time
   // through the loop, then stop the client
-  if (!client.connected() && lastConnected)
-  {
-    Serial.println();
-    Serial.println("disconnecting.");
-    client.stop();
-  }
+//  if (!client.connected() && lastConnected)
+//  {
+//    Serial.println();
+//    Serial.println("disconnecting.");
+//    client.stop();
+//  }
 
   // if you're not connected, and ten seconds have passed since
   // your last connection, then connect again and send data
@@ -157,16 +117,25 @@ void loop()
   {
     //controllo che il counter non superi 100 per aver un Dentedisega e controllare in modo significativo la connessione
     if (counter >= 100) counter = 0;
-  
     dataString += "\nCounter,";
     dataString += counter++;
     
     Serial.println(dataString);
     sendData(dataString);
+
+    // note the time that the connection was made or attempted:
+    lastConnectionTime = millis();
   }
   // store the state of the connection for next time through
   // the loop
   lastConnected = client.connected();
+  Serial.println(lastConnected);
+  delay (1000);
+  closeConnection();
+  delay(1000);
+  sleep();
+  Serial.println("connection closed");
+  delay (1000);
 }
 
 // this method makes a HTTP connection to the server
@@ -210,7 +179,102 @@ void sendData(String thisData)
     Serial.println("disconnecting.");
     client.stop();
   }
-  // note the time that the connection was made or attempted:
-  lastConnectionTime = millis();
 }
 
+String readSensors()
+{
+  // read the sensor on A0
+  int sensorReading = pow(10.0, 3.3*analogRead(A0)/1024.0 ); // da riferirsi ad un AREF di 3.3V
+
+  // convert the data to a String
+  String dataString = "LightLog,";
+  dataString += sensorReading;
+
+  //you can append multiple readings to this String to 
+  // send the pachube feed multiple values
+  //int otherSensorReading = analogRead(A1)/6;
+  float otherSensorReading = 0;
+
+  /************************* 
+   * algoritmo per implementare la funzione proposta da vegetronix: http://vegetronix.com/Products/VH400/VH400-Piecewise-Curve.phtml
+   **************************/
+  for (int p = 0; p < 40 ; p++){
+    //otherSensorReading += analogRead(A1)*3.3/1024.0; // da riferirsi ad un AREF di 3.3V
+    otherSensorReading = analogRead(A1)*3.3/1024.0; // da riferirsi ad un AREF di 3.3V
+  }
+  //otherSensorReading=otherSensorReading/10;
+
+  if ( otherSensorReading >= 0.0 && otherSensorReading < 1.1) VWC = M1*otherSensorReading - B1;
+  if ( otherSensorReading >= 1.1 && otherSensorReading < 1.3) VWC = M2*otherSensorReading - B2;
+  if ( otherSensorReading >= 1.3 && otherSensorReading < 1.82) VWC = M3*otherSensorReading - B3;
+  if ( otherSensorReading >= 1.82 && otherSensorReading < 2.2) VWC = M4*otherSensorReading - B4;
+
+  dataString += "\nSoilHumidity,";
+  dataString += int(VWC);
+
+  /************************* 
+   * Voltaggio batteria LiPo
+   **************************/
+  float batteryvoltage; // misuro il voltaggio in mV della batteria tramite 10K-A2-10K (dissipando costantemente 0,185mA@3,7V per eseguire questa misura!)
+  batteryvoltage =  analogRead(A2)*3300.0/512.0; // un partitore resistivo in ingresso permette di misurare fino a 6,6V, divido per 512 invece di moltiplicare per 2
+
+  dataString += "\nVoltaggioBatteria,";
+  dataString += int(batteryvoltage);
+  // dataString +="\n\n";
+  
+  return dataString;
+}
+
+void sleep()
+{
+  for (int g = 0; g < 4 ; g++){
+    LowPower.powerDown(SLEEP_8S, ADC_OFF, BOD_ON); 
+    delay (1000);
+  }
+  delay(1000);
+  Serial.println("end sleeping");
+}
+
+void closeConnection()
+{
+  if(client.connected()){
+    client.stop();
+    Serial.println("disconnecting in closeConnection.");
+  }
+  delay (2000);///////////////////////////////  00.19
+  while(notConnected==false){
+    if(gsmAccess.shutdown()){
+      delay(1000);
+      digitalWrite(3,LOW);
+      notConnected = true;
+
+    }
+    else{
+      delay(1000);
+    }
+  }
+}
+
+void openConnection()
+{
+  if (gprsAccess.getStatus() == GPRS_READY){
+    Serial.println("returning due to GPRS_READY");
+    return;
+  }
+
+  if (gsmAccess.getStatus() != GSM_READY)
+  {
+    Serial.println("Starting GSM connection...");
+    gsmAccess.begin(PINNUMBER);
+    while(gsmAccess.getStatus() != GSM_READY);
+    Serial.println("... done");
+  }
+  
+  delay(3000);
+
+  Serial.println("Starting GPRS connection...");
+  gprsAccess.attachGPRS(GPRS_APN, GPRS_LOGIN, GPRS_PASSWORD);
+  while(gprsAccess.getStatus() != GPRS_READY);
+  Serial.println("... done");
+  notConnected=false;
+}
