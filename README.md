@@ -1,4 +1,4 @@
-Enviromental-monitoring
-=======================
+Environmental-monitoring
+========================
 
-Arduino code for the Fablab activity regarding monitoring devices.
+Arduino code for the Fablab Torino activity regarding monitoring devices.
