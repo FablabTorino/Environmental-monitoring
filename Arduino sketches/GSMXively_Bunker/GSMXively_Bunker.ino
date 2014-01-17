@@ -1,8 +1,6 @@
 // Include the GSM library
 #include <GSM.h>
 
-#include "LowPower.h"
-
 
 //
 // Xively data
@@ -176,7 +174,6 @@ void loop()
   delay (1000);
   closeConnection();
   delay(1000);
-  sleep();
   Serial.println("connection closed");
   Serial.println("_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _");
   delay (1000);
@@ -297,24 +294,6 @@ String readSensors()
   // dataString +="\n\n";
   
   return dataString;
-}
-
-
-//
-// sleep()
-//
-
-void sleep()
-{
-  for (int g = 0; g < 4 ; ++g)
-  {
-    LowPower.powerDown(SLEEP_8S, ADC_OFF, BOD_ON); 
-    delay (1000);
-  }
-
-  delay(1000);
-
-  Serial.println("end sleeping");
 }
 
 
