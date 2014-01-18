@@ -6,7 +6,7 @@
 // Xively data
 //
 
-// Replace your pachube API key here
+// Replace your Xively API key here
 #define XIVELY_API_KEY "ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789"
 
 // Replace your feed ID
@@ -21,7 +21,7 @@ char xivelyServerNameAddress[] = "api.xively.com";
 // Numeric IP for api.xively.com
 //   (If you don't want to use DNS (and reduce your sketch size)
 //   use the numeric IP instead of the name for the server)
-// IPAddress server(216, 52, 233, 120);
+//IPAddress xivelyServerNameAddress(216, 52, 233, 120);
 
 
 //
@@ -123,7 +123,7 @@ void loop()
 
   digitalWrite(3, HIGH);
 
-  openConnection();
+  openCommunicationChannel();
 
   if (gsmClient.available())
   {
@@ -172,7 +172,7 @@ void loop()
   lastConnected = gsmClient.connected();
   Serial.println(lastConnected);
   delay (1000);
-  closeConnection();
+  closeCommunicationChannel();
   delay(1000);
   Serial.println("connection closed");
   Serial.println("_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _");
@@ -287,7 +287,7 @@ String readSensors()
   //
 
   float batteryvoltage;
-  batteryvoltage =  analogRead(A2)*3300.0/512.0; // un partitore resistivo in ingresso permette di misurare fino a 6,6V, divido per 512 invece di moltiplicare per 2
+  batteryvoltage =  analogRead(A2) * 3300.0 / 512.0; // un partitore resistivo in ingresso permette di misurare fino a 6,6V, divido per 512 invece di moltiplicare per 2
 
   dataString += "\nVoltaggioBatteria,";
   dataString += int(batteryvoltage);
@@ -298,10 +298,10 @@ String readSensors()
 
 
 //
-// closeConnection()
+// closeCommunicationChannel()
 //
 
-void closeConnection()
+void closeCommunicationChannel()
 {
   if(gsmClient.connected())
   {
@@ -330,10 +330,10 @@ void closeConnection()
 
 
 //
-// openConnection()
+// openCommunicationChannel()
 //
 
-void openConnection()
+void openCommunicationChannel()
 {
   if (gprsAccess.getStatus() == GPRS_READY)
   {
