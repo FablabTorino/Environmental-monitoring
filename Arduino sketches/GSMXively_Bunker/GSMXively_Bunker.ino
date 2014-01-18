@@ -81,16 +81,8 @@ float B3 = 47.5;
 float B4 = 7.89;
 
 
-// Last time you connected to the server, in milliseconds
-unsigned long lastConnectionTime = 0;
-
-// State of the connection last time through the main loop
-boolean lastConnected = false;
-
-// Delay between updates to Xively.com
-const unsigned long postingInterval = 3000L;
-
-boolean notConnected = true;
+// Time between two main measure/communicate iterations (in seconds)
+#define SLEEP_INTERVAL 60
 
 int counter = 0;
 
@@ -108,6 +100,10 @@ void setup()
   // Initialize serial communications and wait for port to open
   Serial.begin(9600);
   while (!Serial);
+
+//  digitalWrite(3, HIGH);
+
+  openCommunicationChannel();
 }
 
 
@@ -117,66 +113,19 @@ void setup()
 
 void loop()
 {
-  //delay(3000);
-
+  // Read all sensors data
   String dataString = readSensors();
 
-  digitalWrite(3, HIGH);
+  // Controllo che il counter non superi 99 per aver un dente di sega e controllare in modo significativo la connessione
+  if (counter >= 100)
+    counter = 0;
 
-  openCommunicationChannel();
+  dataString += "\nCounter,";
+  dataString += counter++;
 
-  if (gsmClient.available())
-  {
-    char c = gsmClient.read();
-    Serial.print(c);
-    Serial.println("client available");
-  }
+  sendData(dataString);
 
-  int controller = 0;
-  Serial.println(gsmClient.connected());
-  controller = gsmClient.connected();
-  Serial.println(controller);
-  Serial.println(lastConnected);
-
-  // If there's no net connection, but there was one last time
-  // through the loop, then stop the client
-//  if (!client.connected() && lastConnected)
-//  {
-//    Serial.println();
-//    Serial.println("disconnecting.");
-//    client.stop();
-//  }
-
-  // If you're not connected, and ten seconds have passed since
-  // your last connection, then connect again and send data
-  if(!gsmClient.connected() && (millis() - lastConnectionTime > postingInterval))
-  {
-    // Controllo che il counter non superi 100 per aver un dente di sega e controllare in modo significativo la connessione
-    if (counter >= 100)
-      counter = 0;
-
-    dataString += "\nCounter,";
-    dataString += counter++;
-
-    Serial.println("sono nel if pronto per trasmettere");
-    Serial.println("stampo la stringa che spediro'");
-    Serial.println(dataString);
-    sendData(dataString);
-
-    // Note the time that the connection was made or attempted
-    lastConnectionTime = millis();
-  }
-
-  // Store the state of the connection for next time through the loop
-  Serial.print("come e' il client :  ");
-  lastConnected = gsmClient.connected();
-  Serial.println(lastConnected);
-  delay (1000);
-  closeCommunicationChannel();
-  delay(1000);
-  Serial.println("connection closed");
-  Serial.println("_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _");
-  delay (1000);
+  sleep();
 }
 
 
@@ -188,17 +137,26 @@ void loop()
 
 void sendData(String thisData)
 {
+  while(gsmClient.connected())
+  {
+    while (gsmClient.available())
+    {
+      char c = gsmClient.read();
+      Serial.print(c);
+    }
+  }
+
   // If there's a successful connection
   if (gsmClient.connect(xivelyServerNameAddress, 80))
   {
-    Serial.println("sono nel sendData");
-    Serial.println(thisData);
-    Serial.println(gsmClient.connected());
     int len = thisData.length()+2;
-    Serial.print("len: ");
+
+    Serial.print("Content: ");
+    Serial.println(thisData);
+    Serial.print("Content length: ");
     Serial.println(len);
 
-    Serial.println("connecting...");
+    Serial.println("Sending data...");
 
     // Send the HTTP PUT request:
     gsmClient.print("PUT /v2/feeds/");
@@ -219,15 +177,20 @@ void sendData(String thisData)
 
     // Here's the actual content of the PUT request
     gsmClient.println(thisData);
+    
+    while(gsmClient.connected())
+    {
+      while (gsmClient.available())
+      {
+        char c = gsmClient.read();
+        Serial.print(c);
+      }
+    }
+    
+    gsmClient.stop();
   } 
   else
-  {
-    // If you couldn't make a connection
-    Serial.println("connection failed");
-    Serial.println();
-    Serial.println("disconnecting.");
-    gsmClient.stop();
-  }
+    Serial.println("Can't connect to server");
 }
 
 
@@ -298,70 +261,34 @@ String readSensors()
 
 
 //
-// closeCommunicationChannel()
-//
-
-void closeCommunicationChannel()
-{
-  if(gsmClient.connected())
-  {
-    gsmClient.stop();
-    Serial.println("disconnecting in closeConnection()");
-  }
-
-  delay (2000);
-
-  while(notConnected == false)
-  {
-    if (gsmAccess.shutdown())
-    {
-      delay(1000);
-
-      digitalWrite(3, LOW);
-
-      notConnected = true;
-    }
-    else
-    {
-      delay(1000);
-    }
-  }
-}
-
-
-//
 // openCommunicationChannel()
 //
 
 void openCommunicationChannel()
 {
   if (gprsAccess.getStatus() == GPRS_READY)
-  {
-    Serial.println("returning due to GPRS_READY");
     return;
-  }
 
   if (gsmAccess.getStatus() != GSM_READY)
   {
     Serial.println("Starting GSM connection...");
- 
     gsmAccess.begin(SIM_PIN_NUMBER);
- 
     while(gsmAccess.getStatus() != GSM_READY);
- 
     Serial.println("... done");
   }
   
-  delay(3000);
-
   Serial.println("Starting GPRS connection...");
-
   gprsAccess.attachGPRS(GPRS_APN, GPRS_LOGIN, GPRS_PASSWORD);
-
   while(gprsAccess.getStatus() != GPRS_READY);
-
   Serial.println("... done");
-
-  notConnected = false;
 }
 
+
+//
+// sleep()
+//
+
+void sleep()
+{
+  delay(SLEEP_INTERVAL * 1000);
+}
