@@ -290,5 +290,7 @@ void openCommunicationChannel()
 
 void sleep()
 {
-  delay(SLEEP_INTERVAL * 1000);
+  Serial.println("Sleeping...");
+  delay(SLEEP_INTERVAL * 1000UL);
+  Serial.println("Awake!");
 }
