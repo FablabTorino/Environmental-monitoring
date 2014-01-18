@@ -120,9 +120,9 @@ void loop()
   if (counter >= 100)
     counter = 0;
 
-  dataString += "\nCounter,";
-  dataString += counter++;
+  dataString += createChannelValue("Counter", counter++);
 
+  dataString += "\n";
   sendData(dataString);
 
   sleep();
@@ -149,7 +149,7 @@ void sendData(String thisData)
   // If there's a successful connection
   if (gsmClient.connect(xivelyServerNameAddress, 80))
   {
-    int len = thisData.length()+2;
+    int len = thisData.length();
 
     Serial.print("Content: ");
     Serial.println(thisData);
@@ -200,15 +200,13 @@ void sendData(String thisData)
 
 String readSensors()
 {
-  // Convert the data to a String
-  //   You can append multiple readings to this String to 
-  //   send the Xively feed multiple values
-  String dataString = "LightLog,";
-
   // Read the sensor on A0 (da riferirsi ad un AREF di 3.3V)
   int sensorReading = pow(10.0, 3.3 * analogRead(A0) / 1024.0 );
 
-  dataString += sensorReading;
+  // Convert the data to a String
+  //   You can append multiple readings to this String to 
+  //   send the Xively feed multiple values
+  String dataString = createChannelValue("LightLog", sensorReading);
 
   //int otherSensorReading = analogRead(A1)/6;
   float otherSensorReading = 0;
@@ -239,8 +237,7 @@ String readSensors()
   if ((otherSensorReading >= 1.82) && (otherSensorReading < 2.2))
     VWC = M4 * otherSensorReading - B4;
 
-  dataString += "\nSoilHumidity,";
-  dataString += int(VWC);
+  dataString += createChannelValue("SoilHumidity", int(VWC));
 
 
   //
@@ -249,12 +246,10 @@ String readSensors()
   //   Misuro il voltaggio in mV della batteria tramite 10K-A2-10K (dissipando costantemente 0,185mA@3,7V per eseguire questa misura!)
   //
 
-  float batteryvoltage;
-  batteryvoltage =  analogRead(A2) * 3300.0 / 512.0; // un partitore resistivo in ingresso permette di misurare fino a 6,6V, divido per 512 invece di moltiplicare per 2
+  // un partitore resistivo in ingresso permette di misurare fino a 6,6V, divido per 512 invece di moltiplicare per 2
+  float  batteryvoltage =  analogRead(A2) * 3300.0 / 512.0;
 
-  dataString += "\nVoltaggioBatteria,";
-  dataString += int(batteryvoltage);
-  // dataString +="\n\n";
+  dataString += createChannelValue("VoltaggioBatteria", int(batteryvoltage));
   
   return dataString;
 }
@@ -293,4 +288,14 @@ void sleep()
   Serial.println("Sleeping...");
   delay(SLEEP_INTERVAL * 1000UL);
   Serial.println("Awake!");
+}
+
+
+//
+// createChannelValue()
+//
+
+String createChannelValue(String channelName, int value)
+{
+  return channelName + "," + value + "\n";
 }
