@@ -16,7 +16,7 @@
 #define XIVELY_USER_AGENT "GSM"
 
 // Name address for Xively API
-char xivelyServerNameAddress[] = "api.xively.com";
+#define XIVELY_SERVER_NAME_ADDRESS "api.xively.com"
 
 // Numeric IP for api.xively.com
 //   (If you don't want to use DNS (and reduce your sketch size)
@@ -147,7 +147,7 @@ void sendData(String thisData)
   }
 
   // If there's a successful connection
-  if (gsmClient.connect(xivelyServerNameAddress, 80))
+  if (gsmClient.connect(XIVELY_SERVER_NAME_ADDRESS, 80))
   {
     int len = thisData.length();
 
