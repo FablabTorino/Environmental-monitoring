@@ -51,7 +51,7 @@ GSM gsmAccess;
 
 
 //
-// Variabili per il calcolo del VWC per approssimare la curva con una successione di spezzate
+// Variabili per il calcolo del VWC (Volumetric Water Content) per approssimare la curva con una successione di spezzate
 //
 
 float VWC;
@@ -201,41 +201,30 @@ void sendData(String thisData)
 String readSensors()
 {
   // Read the sensor on A0 (da riferirsi ad un AREF di 3.3V)
-  int sensorReading = pow(10.0, 3.3 * analogRead(A0) / 1024.0 );
+  float lightSensorReading = pow(10.0, 3.3 * analogReadAverage(A0, 10) / 1024.0);
 
   // Convert the data to a String
   //   You can append multiple readings to this String to 
   //   send the Xively feed multiple values
-  String dataString = createChannelValue("LightLog", sensorReading);
-
-  //int otherSensorReading = analogRead(A1)/6;
-  float otherSensorReading = 0;
-
+  String dataString = createChannelValue("LightLog", lightSensorReading);
 
   //
   // Algoritmo per implementare la funzione proposta da Vegetronix (http://vegetronix.com/Products/VH400/VH400-Piecewise-Curve.phtml)
   //
 
-  for (int p = 0; p < 40 ; ++p)
-  {
-    // Da riferirsi ad un AREF di 3.3V
-    //otherSensorReading += analogRead(A1) * 3.3 / 1024.0;
-    otherSensorReading = analogRead(A1) * 3.3 / 1024.0;
-  }
+  float humiditySensorReading = analogReadAverage(A1, 40) * 3.3 / 1024.0;
 
-  //otherSensorReading = otherSensorReading / 10;
+  if ((humiditySensorReading >= 0.0) && (humiditySensorReading < 1.1))
+    VWC = M1 * humiditySensorReading - cB1;
 
-  if ((otherSensorReading >= 0.0) && (otherSensorReading < 1.1))
-    VWC = M1 * otherSensorReading - cB1;
+  if ((humiditySensorReading >= 1.1) && (humiditySensorReading < 1.3))
+    VWC = M2 * humiditySensorReading - B2;
 
-  if ((otherSensorReading >= 1.1) && (otherSensorReading < 1.3))
-    VWC = M2 * otherSensorReading - B2;
+  if ((humiditySensorReading >= 1.3) && (humiditySensorReading < 1.82))
+    VWC = M3 * humiditySensorReading - B3;
 
-  if ((otherSensorReading >= 1.3) && (otherSensorReading < 1.82))
-    VWC = M3 * otherSensorReading - B3;
-
-  if ((otherSensorReading >= 1.82) && (otherSensorReading < 2.2))
-    VWC = M4 * otherSensorReading - B4;
+  if ((humiditySensorReading >= 1.82) && (humiditySensorReading < 2.2))
+    VWC = M4 * humiditySensorReading - B4;
 
   dataString += createChannelValue("SoilHumidity", int(VWC));
 
@@ -247,9 +236,9 @@ String readSensors()
   //
 
   // un partitore resistivo in ingresso permette di misurare fino a 6,6V, divido per 512 invece di moltiplicare per 2
-  float  batteryvoltage =  analogRead(A2) * 3300.0 / 512.0;
+  float  batteryVoltage = analogReadAverage(A2, 10) * 3300.0 / 512.0;
 
-  dataString += createChannelValue("VoltaggioBatteria", int(batteryvoltage));
+  dataString += createChannelValue("VoltaggioBatteria", int(batteryVoltage));
   
   return dataString;
 }
@@ -298,4 +287,19 @@ void sleep()
 String createChannelValue(String channelName, int value)
 {
   return channelName + "," + value + "\n";
+}
+
+
+//
+// analogReadAverage()
+//
+
+float analogReadAverage(uint8_t pin, int readCount)
+{
+  long sum = 0L;
+  
+  for (int r = readCount; r; --r)
+    sum += analogRead(pin);
+
+  return sum / (float) readCount;
 }
